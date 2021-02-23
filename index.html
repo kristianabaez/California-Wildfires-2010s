@@ -210,7 +210,7 @@
     // use jquery to load wildfires GeoJSON data
     $.when(
       $.getJSON("data/California_Fire_Perimeters.json"),
-      $.getJSON("data/California_cities.json"),
+      $.getJSON("data/california_cities.json"),
       // when the files are done loading,
       // identify them with names and process them through a function
     ).done(function(caliFires, caliCities) {

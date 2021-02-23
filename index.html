@@ -89,30 +89,31 @@
       bottom: 2px;
       left: 10px;
     }
+
     /* Set chart styles */
-#chart {
-  max-width: 360px;
-  margin: 0px auto;
-  position: absolute;
-  top: 10px;
-  right: 15px;
-}
+    #chart {
+      max-width: 360px;
+      margin: 0px auto;
+      position: absolute;
+      top: 10px;
+      right: 15px;
+    }
 
-.map-overlay {
-  position: absolute;
-  width: 25%;
-  top: 0px;
-  right: 0%;
-  padding: 10px;
-  z-index: 700;
-}
+    .map-overlay {
+      position: absolute;
+      width: 25%;
+      top: 0px;
+      right: 0%;
+      padding: 10px;
+      z-index: 700;
+    }
 
-.map-overlay .map-overlay-inner {
-  background-color: rgba(255, 255, 255, 1.0);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
-  padding-bottom: 60%;
-}
+    .map-overlay .map-overlay-inner {
+      background-color: rgba(255, 255, 255, 1.0);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+      padding-bottom: 60%;
+    }
 
     /* the layer control */
     .leaflet-control-layers {
@@ -154,11 +155,11 @@
     <h5 class='txt-bold'><span id='span'></span></h5>
   </div>
   <!-- the area chart -->
-<div class="map-overlay container">
-  <div class="map-overlay-inner">
-    <div id="chart"></div>
+  <div class="map-overlay container">
+    <div class="map-overlay-inner">
+      <div id="chart"></div>
+    </div>
   </div>
-</div>
 
 
   <!-- Add a link to the Leaflet JavaScript library so you can reference it for building your map -->
@@ -169,288 +170,286 @@
   <!-- for statistics, classifications -->
   <script src="https://unpkg.com/simple-statistics@7.4.0/dist/simple-statistics.min.js"></script>
   <!-- apex charts -->
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 
   <script>
+    // define map options
+    const mapOptions = {
+      zoomSnap: 0.5, // this allows fractional zooming
+      center: [37.5, -120], // center the map on the coordinates for California
+      zoom: 6.5, // set the initial zoom
+    };
 
-  // define map options
-  const mapOptions = {
-  zoomSnap: 0.5, // this allows fractional zooming
-  center: [37.5, -120], // center the map on the coordinates for California
-  zoom: 6.5, // set the initial zoom
-  };
+    // define the map with the options above
+    const map = L.map("map", mapOptions);
+    // define an array to store all the years in the data
+    const years = [
+      "2010",
+      "2011",
+      "2012",
+      "2013",
+      "2014",
+      "2015",
+      "2016",
+      "2017",
+      "2018",
+      "2019"
+    ];
+    const areasBurned = [];
+    // add a base map to the map
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 20
+    }).addTo(map);
+    // Add a scale bar
+    L.control.scale({
+      position: 'bottomright' // Position the scale bar at the bottom-right corner
+    }).addTo(map);
 
-  // define the map with the options above
-  const map = L.map("map", mapOptions);
-  // define an array to store all the years in the data
-  const years = [
-  "2010",
-  "2011",
-  "2012",
-  "2013",
-  "2014",
-  "2015",
-  "2016",
-  "2017",
-  "2018",
-  "2019"
-  ];
-  const areasBurned = [];
-  // add a base map to the map
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-  subdomains: 'abcd',
-  maxZoom: 20
-  }).addTo(map);
-  // Add a scale bar
-  L.control.scale({
-  position: 'bottomright' // Position the scale bar at the bottom-right corner
-  }).addTo(map);
+    // use jquery to load wildfires GeoJSON data
+    $.when(
+      $.getJSON("data/California_Fire_Perimeters.json"),
+      $.getJSON("data/California_cities.json"),
+      // when the files are done loading,
+      // identify them with names and process them through a function
+    ).done(function(caliFires, caliCities) {
 
-  // use jquery to load wildfires GeoJSON data
-  $.when(
-  $.getJSON("data/California_Fire_Perimeters.json"),
-  $.getJSON("data/California_cities.json"),
-  // when the files are done loading,
-  // identify them with names and process them through a function
-  ).done(function(caliFires, caliCities) {
+      // call the years array and for each year in sequence...
+      years.forEach(function iterate(item) {
+        // push rounded sums to the areasBurned array
+        areasBurned.push(parseInt(ss.sum(caliFires[0].features.map(function(feature) {
+          // if the feature's year is equal to the sequential year in the array
+          if (feature.properties['YEAR_'] == item) {
+            // return the acres burned
+            return feature.properties['GIS_ACRES'];
+            // otherwise return zero
+          } else return 0;
+        }))));
+      });
+      // initiate a leaflet GeoJSON layer with L.geoJson, feed it the wildfires data, and add to the map
+      const wildfires = L.geoJson(caliFires, {
+        // style the layer
+        style: function(feature) {
+          return {
+            fillColor: "orange", // set the polygon fill to orange
+            fillOpacity: 0.3, // give the polygon fill a 30% opacity
+            color: "orange", // set the outline color to orange
+            weight: 1.2, // give the outline a weight
+            opacity: 0.7 // give the outline 70% opacity
+          };
+        },
+        // for each feature...
+        onEachFeature: function(feature, layer) {
+          // define the tooltip info
+          let wildfireTooltip = layer.feature.properties.FIRE_NAME + " FIRE, " + layer.feature.properties.ALARM_DATE.substring(0, 10) + "<br>" + parseInt(layer.feature.properties.GIS_ACRES) + " acres burned";
+          // bind the tooltip to the layer and add the content defined as "wildfireTooltip" above
+          layer.bindTooltip(wildfireTooltip, {
+            sticky: true,
+            className: "tooltip",
+          });
+        }
+      }).addTo(map);
+      // initiate a leaflet GeoJSON layer with L.geoJson, feed it the urban boundaries data, and add to the map
+      const urban = L.geoJson(caliCities, {
+        // style the layer
+        style: function(feature) {
+          return {
+            fillColor: "yellow", // set the polygon fill to yellow
+            fillOpacity: 0.3, // give the polygon fill a 30% opacity
+            color: "yellow", // set the outline color to yellow
+            weight: 1.0, // give the outline a weight
+            opacity: 0.7 // give the outline 70% opacity
+          };
+        },
+        // for each feature...
+        onEachFeature: function(feature, layer) {
+          // define the tooltip info
+          let cityTooltip = layer.feature.properties.name10;
+          // bind the tooltip to the layer and add the content defined as "cityTooltip" above
+          layer.bindTooltip(cityTooltip, {
+            sticky: true,
+            className: "tooltip",
+          });
+          //define what happens on mouseover
+          layer.on("mouseover", function(e) {
+            layer.setStyle({
+              fillOpacity: 0.7,
+              opacity: 1.0
+            });
+          });
+          //define what happens on mouseout
+          layer.on("mouseout", function(e) {
+            layer.setStyle({
+              fillOpacity: 0.3,
+              opacity: 0.7
+            });
+          });
+        }
+      }).addTo(map);
+      // define layers for layer control
+      const controlLayers = {
+        "Urban Areas": urban,
+      };
 
-  // call the years array and for each year in sequence...
-  years.forEach(function iterate(item) {
-  // push rounded sums to the areasBurned array
-  areasBurned.push(parseInt(ss.sum(caliFires[0].features.map(function(feature) {
-  // if the feature's year is equal to the sequential year in the array
-  if (feature.properties['YEAR_'] == item) {
-  // return the acres burned
-  return feature.properties['GIS_ACRES'];
-  // otherwise return zero
-  } else return 0;
-  }))));
-  });
-  console.log(areasBurned);
-  // initiate a leaflet GeoJSON layer with L.geoJson, feed it the wildfires data, and add to the map
-  const wildfires = L.geoJson(caliFires, {
-  // style the layer
-  style: function(feature) {
-  return {
-  fillColor: "orange", // set the polygon fill to orange
-  fillOpacity: 0.3, // give the polygon fill a 30% opacity
-  color: "orange", // set the outline color to orange
-  weight: 1.2, // give the outline a weight
-  opacity: 0.7 // give the outline 70% opacity
-  };
-  },
-  // for each feature...
-  onEachFeature: function(feature, layer) {
-  // define the tooltip info
-  let wildfireTooltip = layer.feature.properties.FIRE_NAME + " FIRE, " + layer.feature.properties.ALARM_DATE.substring(0, 10) + "<br>" + parseInt(layer.feature.properties.GIS_ACRES) + " acres burned";
-  // bind the tooltip to the layer and add the content defined as "wildfireTooltip" above
-  layer.bindTooltip(wildfireTooltip, {
-  sticky: true,
-  className: "tooltip",
-  });
-  }
-  }).addTo(map);
-  // initiate a leaflet GeoJSON layer with L.geoJson, feed it the urban boundaries data, and add to the map
-  const urban = L.geoJson(caliCities, {
-  // style the layer
-  style: function(feature) {
-  return {
-  fillColor: "yellow", // set the polygon fill to yellow
-  fillOpacity: 0.3, // give the polygon fill a 30% opacity
-  color: "yellow", // set the outline color to yellow
-  weight: 1.0, // give the outline a weight
-  opacity: 0.7 // give the outline 70% opacity
-  };
-  },
-  // for each feature...
-  onEachFeature: function(feature, layer) {
-  // define the tooltip info
-  let cityTooltip = layer.feature.properties.name10;
-  // bind the tooltip to the layer and add the content defined as "cityTooltip" above
-  layer.bindTooltip(cityTooltip, {
-  sticky: true,
-  className: "tooltip",
-  });
-  //define what happens on mouseover
-  layer.on("mouseover", function(e) {
-  layer.setStyle({
-  fillOpacity: 0.7,
-  opacity: 1.0
-  });
-  });
-  //define what happens on mouseout
-  layer.on("mouseout", function(e) {
-  layer.setStyle({
-  fillOpacity: 0.3,
-  opacity: 0.7
-  });
-  });
-  }
-  }).addTo(map);
-  // define layers for layer control
-  const controlLayers = {
-  "Urban Areas": urban,
-  };
-
-  // send the layers to the layer control
-  L.control.layers(null, controlLayers, {
-  collapsed: false,
-  position: 'topleft',
-  }).addTo(map);
-  // define the value in the slider when the map loads
-  let currentYear = $('.slider').val();
-  // call functions defined below
-  sequenceUI(wildfires);
-  createTemporalLegend(currentYear); // calls the createTemporalLegend function
-  updateFires(wildfires, currentYear); // calls the updateFires function to update the wildfires data
-  renderChart(); // creates the total acres burned chart
-  browserCheck(wildfires);
-  });
+      // send the layers to the layer control
+      L.control.layers(null, controlLayers, {
+        collapsed: false,
+        position: 'topleft',
+      }).addTo(map);
+      // define the value in the slider when the map loads
+      let currentYear = $('.slider').val();
+      // call functions defined below
+      sequenceUI(wildfires);
+      createTemporalLegend(currentYear); // calls the createTemporalLegend function
+      updateFires(wildfires, currentYear); // calls the updateFires function to update the wildfires data
+      renderChart(); // creates the total acres burned chart
+      browserCheck(wildfires);
+    });
 
 
 
-  // call the UI slider with a function called "sequenceUI"
-  function sequenceUI(wildfires) { // feed it the wildfires data
-  // use the jQuery ajax method to get the slider element
-  $('.slider')
-  .on('input change', function() { // when the input changes...
-  let currentYear = $(this).val(); // identify the year selected with "currentYear"
-  createTemporalLegend(currentYear); // call the createTemporalLegend function
-  updateFires(wildfires, currentYear);
-  });
+    // call the UI slider with a function called "sequenceUI"
+    function sequenceUI(wildfires) { // feed it the wildfires data
+      // use the jQuery ajax method to get the slider element
+      $('.slider')
+        .on('input change', function() { // when the input changes...
+          let currentYear = $(this).val(); // identify the year selected with "currentYear"
+          createTemporalLegend(currentYear); // call the createTemporalLegend function
+          updateFires(wildfires, currentYear);
+        });
 
-  }; // End sequenceUI function
-  // Add a temporal legend in sync with the UI slider
-  function createTemporalLegend(currentYear) { // feed it the selected year
+    }; // End sequenceUI function
+    // Add a temporal legend in sync with the UI slider
+    function createTemporalLegend(currentYear) { // feed it the selected year
 
-  // define the temporal legend with a Leaflet control
-  const temporalLegend = L.control({
-  position: 'bottomleft' // place the temporal legend at bottom left corner
-  });
+      // define the temporal legend with a Leaflet control
+      const temporalLegend = L.control({
+        position: 'bottomleft' // place the temporal legend at bottom left corner
+      });
 
-  // when added to the map
-  temporalLegend.onAdd = function(map) {
+      // when added to the map
+      temporalLegend.onAdd = function(map) {
 
-  const div = L.DomUtil.get("temporal"); // get the div
+        const div = L.DomUtil.get("temporal"); // get the div
 
-  // disable the mouse events
-  L.DomEvent.addListener(div, 'mousedown', function(e) {
-  L.DomEvent.stopPropagation(e);
-  });
+        // disable the mouse events
+        L.DomEvent.addListener(div, 'mousedown', function(e) {
+          L.DomEvent.stopPropagation(e);
+        });
 
-  return div; // return the div from the function
+        return div; // return the div from the function
 
-  }
-
-  $('#temporal span').html("Year: " + currentYear); // change grade value to that currently selected by UI slider
-
-  temporalLegend.addTo(map); // add the temporal legend to the map
-
-  }; // End createTemporalLegend function
-  // Define updateFires function and feed it the wildfire data and the user-selected year
-  function updateFires(wildfires, currentYear) {
-
-  // access each layer in the wildfire data
-  wildfires.eachLayer(function(layer) {
-  // define the wildfire year
-  let year = layer.feature.properties.YEAR_;
-  // define the tooltip info
-  let wildfireTooltip = layer.feature.properties.FIRE_NAME + " FIRE, " + layer.feature.properties.ALARM_DATE.substring(0, 10) + "<br>" + parseInt(layer.feature.properties.GIS_ACRES) + " acres burned";
-  // use conditional logic to test if the layer properties match the time slider year
-  if (year == currentYear) {
-  // if there is a match, add the wildfires layer to the map
-  layer.addTo(map);
-  // bind the tooltip to the layer and add the content defined as "wildfireTooltip" above
-  layer.bindTooltip(wildfireTooltip, {
-  sticky: true,
-  className: "tooltip",
-  });
-  // change the layer style on mouseover
-  layer.on("mouseover", function(e) {
-  this.setStyle({
-  fillOpacity: 0.7,
-  opacity: 1.0
-  });
-  });
-  // use existing option to reset the styles on mouseout
-  layer.on("mouseout", function(e) {
-  this.setStyle({
-  fillOpacity: 0.3,
-  opacity: 0.7
-  });
-  });
-  } else {
-  // otherwise, remove the layer from the map
-  map.removeLayer(layer);
-  };
-  });
-  }; // End updateFires function
-  // Define the renderChart function
-function renderChart() {
-
-  // define the chart options
-  const options = {
-    chart: {
-      type: 'area',
-      zoom: {
-        enabled: false
       }
-    },
-    dataLabels: {
-      enabled: false
-    },
-    stroke: {
-      curve: 'straight'
-    },
-    title: {
-      text: 'Total Acres Burned',
-      align: 'left'
-    },
-    series: [{
-      name: 'acres burned',
-      // use the areasBurned array for the data
-      data: areasBurned
-    }],
-    xaxis: {
-      // use the sorted array years as the categories
-      categories: years
-    }
-  }
-  // define the chart
-  const chart = new ApexCharts(document.querySelector("#chart"), options);
-  // draw it on the page
-  chart.render();
 
-}; // End renderChart function
-function browserCheck(wildfires){
-  if (navigator.userAgent.indexOf("Chrome") !=-1){
-    /*
-   * Workaround for 1px lines appearing in some browsers due to fractional transforms
-   * and resulting anti-aliasing.
-   * https://github.com/Leaflet/Leaflet/issues/3575
-   */
-  (function(){
-      var originalInitTile = L.GridLayer.prototype._initTile
-      L.GridLayer.include({
-          _initTile: function (tile) {
+      $('#temporal span').html("Year: " + currentYear); // change grade value to that currently selected by UI slider
+
+      temporalLegend.addTo(map); // add the temporal legend to the map
+
+    }; // End createTemporalLegend function
+    // Define updateFires function and feed it the wildfire data and the user-selected year
+    function updateFires(wildfires, currentYear) {
+
+      // access each layer in the wildfire data
+      wildfires.eachLayer(function(layer) {
+        // define the wildfire year
+        let year = layer.feature.properties.YEAR_;
+        // define the tooltip info
+        let wildfireTooltip = layer.feature.properties.FIRE_NAME + " FIRE, " + layer.feature.properties.ALARM_DATE.substring(0, 10) + "<br>" + parseInt(layer.feature.properties.GIS_ACRES) + " acres burned";
+        // use conditional logic to test if the layer properties match the time slider year
+        if (year == currentYear) {
+          // if there is a match, add the wildfires layer to the map
+          layer.addTo(map);
+          // bind the tooltip to the layer and add the content defined as "wildfireTooltip" above
+          layer.bindTooltip(wildfireTooltip, {
+            sticky: true,
+            className: "tooltip",
+          });
+          // change the layer style on mouseover
+          layer.on("mouseover", function(e) {
+            this.setStyle({
+              fillOpacity: 0.7,
+              opacity: 1.0
+            });
+          });
+          // use existing option to reset the styles on mouseout
+          layer.on("mouseout", function(e) {
+            this.setStyle({
+              fillOpacity: 0.3,
+              opacity: 0.7
+            });
+          });
+        } else {
+          // otherwise, remove the layer from the map
+          map.removeLayer(layer);
+        };
+      });
+    }; // End updateFires function
+    // Define the renderChart function
+    function renderChart() {
+
+      // define the chart options
+      const options = {
+        chart: {
+          type: 'area',
+          zoom: {
+            enabled: false
+          }
+        },
+        dataLabels: {
+          enabled: false
+        },
+        stroke: {
+          curve: 'straight'
+        },
+        title: {
+          text: 'Total Acres Burned',
+          align: 'left'
+        },
+        series: [{
+          name: 'acres burned',
+          // use the areasBurned array for the data
+          data: areasBurned
+        }],
+        xaxis: {
+          // use the sorted array years as the categories
+          categories: years
+        }
+      }
+      // define the chart
+      const chart = new ApexCharts(document.querySelector("#chart"), options);
+      // draw it on the page
+      chart.render();
+
+    }; // End renderChart function
+    function browserCheck(wildfires) {
+      if (navigator.userAgent.indexOf("Chrome") != -1) {
+        /*
+         * Workaround for 1px lines appearing in some browsers due to fractional transforms
+         * and resulting anti-aliasing.
+         * https://github.com/Leaflet/Leaflet/issues/3575
+         */
+        (function() {
+          var originalInitTile = L.GridLayer.prototype._initTile
+          L.GridLayer.include({
+            _initTile: function(tile) {
               originalInitTile.call(this, tile);
 
               var tileSize = this.getTileSize();
 
               tile.style.width = tileSize.x + 1 + 'px';
               tile.style.height = tileSize.y + 1 + 'px';
-          }
-      });
-  })()
-  map.setView([0,0], 6.5);
-  map.fitBounds(wildfires.getBounds());
-  document.getElementById("span").style.bottom = '3px';
-  document.getElementById("chart").style.right = '35px';
-  document.getElementById("chart").style.top = '25px';
-  }
+            }
+          });
+        })()
+        map.setView([0, 0], 6.5);
+        map.fitBounds(wildfires.getBounds());
+        document.getElementById("span").style.bottom = '3px';
+        document.getElementById("chart").style.right = '35px';
+        document.getElementById("chart").style.top = '25px';
+      }
 
-};
+    };
   </script>
 </body>
 

@@ -423,7 +423,8 @@
 
     }; // End renderChart function
     function browserCheck(wildfires) {
-      if (navigator.userAgent.indexOf("Chrome") != -1) {
+      // if the browser is Chrome or Safari...
+      if (navigator.userAgent.indexOf("Chrome") != -1 || navigator.userAgent.indexOf("Safari") != -1) {
         /*
          * Workaround for 1px lines appearing in some browsers due to fractional transforms
          * and resulting anti-aliasing.
@@ -442,13 +443,12 @@
             }
           });
         })()
-        map.setView([0, 0], 6.5);
-        map.fitBounds(wildfires.getBounds());
-        document.getElementById("span").style.bottom = '3px';
-        document.getElementById("chart").style.right = '35px';
-        document.getElementById("chart").style.top = '25px';
-      }
-
+        map.setView([0, 0], 6.5); // reset the center
+        map.fitBounds(wildfires.getBounds()); // reset the bounds to match the wildfires layer
+        document.getElementById("span").style.bottom = '3px'; // pushes up the text in the temporal legend
+        document.getElementById("chart").style.right = '35px'; // restyles the chart
+        document.getElementById("chart").style.top = '25px'; // restyles the chart
+      };
     };
   </script>
 </body>
